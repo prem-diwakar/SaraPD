@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Homepage - For You ❤️</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Importing Three.js and Vanta.js Waves effect for background animation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"></script>
+
+<style>
+/* ----------------------------
+   GLOBAL THEME VARIABLES
+   ----------------------------
+   These CSS variables centralize the color scheme and key style values.
+   Altering these globally changes the site's look easily.
+----------------------------- */
+:root {
+  --bg-color: #181818;               /* Dark background for moody vibe */
+  --text-color: white;               /* Main text color for contrast */
+  --btn-gradient-start: #a83279;     /* Button gradient start color */
+  --btn-gradient-end: #5b2a6e;       /* Button gradient end color */
+  --btn-shadow-color: rgba(168, 50, 121, 0.8); /* Button shadow for depth */
+  --btn-shadow-hover-color: rgba(168, 50, 121, 1);  /* Brighter shadow on hover */
+  --focus-outline-color: #f4b400;      /* Accessible focus outline */
+  --accent-pink: #ff8ec6;              /* Pink accent for hearts/messages */
+  --accent-purple: #b96bbd;            /* Purple accent for gradients */
+}
+
+/* Removes default margin and padding from fundamental elements for a clean slate, sets box-sizing to border-box for predictable sizing */
+body, h1, h2, p, button { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Base body styling
+  - Uses Poppins font for a modern, clean look.
+  - Dark background helps accentuate bright elements.
+  - Prevents horizontal and vertical scroll overflow for consistency.
+*/
+body {
+  font-family: "Poppins", Arial, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  overflow-x: hidden;
+  overflow-y: hidden; /* Prevent vertical scrolling */
+}
+
+/* ----------------------------
+   INTRO OVERLAY ANIMATION
+   ----------------------------
+   Fullscreen fixed overlay appearing immediately on page load.
+   Displays a glowing, animated welcoming text.
+   After a timed period (~4.8s) it fades out to reveal the main page.
+----------------------------- */
+#openingOverlay {
+  position: fixed; inset:0;
+  background: linear-gradient(135deg,#330029,#20001b); /* Romantic deep gradient */
+  display:flex; align-items:center; justify-content:center;
+  z-index:9999;                                       /* Highest z-index to overlay all */
+  animation: overlayFadeOut 4.8s ease forwards;       /* Automatically fades out after intro */
+  overflow:hidden;
+}
+
+/* Glowing animated text in overlay
+  - Large, thick text with letter spacing for elegance.
+  - Uses background gradient with clipped text for color effect.
+  - Drop shadow adds glow effect to match pink accent.
+  - Glowing scale and fade animation to attract attention.
+*/
+#openingOverlay .glow-text {
+  font-size:3.5rem;
+  font-weight:900;
+  letter-spacing:0.15em;
+  background: linear-gradient(45deg,var(--accent-pink),var(--accent-purple));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation: glowTextAnim 4.5s ease-in-out forwards;
+  filter: drop-shadow(0 0 15px var(--accent-pink));
+  z-index:10; /* In front of hearts */
+}
+
+/* Keyframe anim for glowing text:
+  - Starts slightly smaller and transparent
+  - Scales up to normal size and fades in
+  - Pulses bigger and then scales up to fade away */
+@keyframes glowTextAnim {
+  0%{transform:scale(0.85);opacity:0;}
+  20%{transform:scale(1);opacity:1;}
+  70%{transform:scale(1.15);opacity:1;}
+  100%{transform:scale(3);opacity:0;}
+}
+
+/* Keyframe animation for hiding overlay: keeps fully visible for most of duration, then fades out & hides */
+@keyframes overlayFadeOut {
+  0%,85%{opacity:1;}
+  100%{opacity:0;visibility:hidden;}
+}
+
+/* Floating hearts animation in intro overlay:
+  - Hearts start slightly below viewport,
+  - Float upwards over 6 seconds, scaling larger and rotating slightly,
+  - Fade out by the time they exit the top.
+  - Pointer-events disabled to let clicks pass through.
+*/
+.intro-floating-hearts {position:absolute;inset:0;pointer-events:none;z-index:5;}
+.heart-svg {
+  position:absolute;
+  bottom:-50px;
+  opacity:0.8;
+  transform-origin:center;
+  animation:riseHeart 6s linear forwards;
+}
+@keyframes riseHeart {
+  to {
+    transform:translateY(-120vh) scale(1.3) rotate(-20deg);
+    opacity:0;
+  }
+}
+
+/* ----------------------------
+   VANTA BACKGROUND LAYER
+   ----------------------------
+   Fixed full viewport container for animated wave background behind all content.
+   z-index set low to stay behind everything else.
+----------------------------- */
+#vanta-bg {position:fixed;inset:0;z-index:0;}
+
+/* ----------------------------
+   MAIN CONTENT WRAPPER
+   ----------------------------
+   Container for the main interactive content.
+   Initially invisible and slid down slightly for entrance animation.
+   Uses flexbox for vertical centering and column layout.
+   Max width to constrain text lines on wide screens.
+   Transitions smoothly to visible on class toggle.
+----------------------------- */
+.wrapper {
+  position:relative; z-index:5; max-width:900px;
+  margin:0 auto; padding:40px 20px; min-height:100vh;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center;
+  opacity:0; transform:translateY(20px);
+  transition:opacity 1.2s ease,transform 1.2s ease;
+}
+.wrapper.visible {opacity:1;transform:translateY(0);}
+
+/* Large heading with subtle continuous heartbeat scaling animation:
+   - Grabs attention as the main greeting while animated.
+   - Makes the page feel lively and emotionally engaging.
+*/
+h1 {
+  font-size:3rem; margin-bottom:1rem; font-weight:700;
+  animation:heartbeat 3s infinite;
+}
+@keyframes heartbeat {
+  0%,100%{transform:scale(1);}
+  14%{transform:scale(1.05);}
+  28%{transform:scale(0.97);}
+  42%{transform:scale(1.05);}
+  70%{transform:scale(1);}
+}
+
+/* ----------------------------
+   SURPRISE BUTTON STYLING
+   ----------------------------
+   Stylish button with pink-purple gradient background.
+   Rounded pill shape with drop shadow to stand out.
+   Hover effect scales bigger and intensifies shadow for interactivity feedback.
+----------------------------- */
+.btn {
+  background: linear-gradient(45deg,var(--btn-gradient-start),var(--btn-gradient-end));
+  border:none; padding:18px 44px; font-size:1.25rem; font-weight:700;
+  color:var(--text-color);
+  border-radius:50px; cursor:pointer;
+  box-shadow:0 8px 24px var(--btn-shadow-color);
+  transition:transform 0.25s, box-shadow 0.25s;
+}
+.btn:hover {
+  transform:scale(1.08);
+  box-shadow:0 0 30px 12px rgba(168,50,121,1);
+}
+
+/* Proposal text that replaces button after click
+   - Slightly larger text and margin for emphasis.
+   - 'hint-message' provides a secret hint, initially hidden, fades in smoothly.
+*/
+.proposal {margin-top:2rem; font-size:1.3rem;}
+.hint-message {opacity:0; transition:opacity 1s ease;}
+.hint-message.visible {opacity:1;}
+
+/* ----------------------------
+   FLOATING CUTE MESSAGES
+   ----------------------------
+   Multiple cute message bubbles absolutely positioned around the screen.
+   Styled with red backgrounds, rounded corners, and subtle shadows for a bubbly feel.
+   They animate with a slow up/down bobbing motion to appear alive.
+   Pointer events enabled on messages for interaction.
+*/
+.cute-messages-container {position:absolute;inset:0;pointer-events:none;z-index:15;}
+.cute-message {
+  position:absolute; background: #ff4d4d; /* red background */
+  color: white;
+  padding: 6px 12px; border-radius: 12px;
+  font-weight: 600; font-size: 1rem;
+  box-shadow: 0 4px 8px rgba(255, 77, 77, 0.7); /* red shadow */
+  pointer-events: auto; /* allows interaction */
+  animation: floatHanging 4s ease-in-out infinite;
+  transition: transform 0.6s ease, opacity 0.6s ease;
+}
+
+/* Up/down floating animation keyframe for the messages */
+@keyframes floatHanging {
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(6px);}
+}
+
+/* Drop effect when hovered:
+   - Message falls down rotating 30 degrees
+   - Fades out smoothly
+   - Pointer events disabled so it can't be re-hovered
+*/
+.cute-message.drop {
+  pointer-events:none;
+  transform:translateY(200px) rotate(30deg);
+  opacity:0;
+  transition:transform 0.8s ease, opacity 0.8s ease;
+}
+
+/* ----------------------------
+   FLOATING HEARTS + WORDS
+   ----------------------------
+   Floating hearts and cute words continuously rise from bottom to top.
+   Positioned fixed to overlay entire viewport.
+   Words styled with red color and bold font with subtle shadow for pop.
+*/
+.floating-hearts {position:fixed;inset:0;pointer-events:none;z-index:1;}
+.floating-word {
+  position:absolute;
+  bottom:-30px;
+  font-size:1.1rem;
+  font-weight:bold;
+  color: #ffffff; /* red color */
+  opacity:0.85;
+  animation:riseWord 6s linear forwards;
+  text-shadow:0 2px 4px rgba(0,0,0,0.3);
+}
+/* Floating up animation for words that fade out at top */
+@keyframes riseWord {
+  to{transform:translateY(-120vh);opacity:0;}
+}
+
+/* ----------------------------
+   HEART BURST ANIMATION
+   ----------------------------
+   Creates a visually impactful burst of hearts expanding outwards from center.
+   Hearts scale bigger, then shrink and fade.
+   Positioned with transform to center in viewport.
+*/
+.hearts-burst {position:fixed;top:40%;left:50%;width:300px;height:300px;pointer-events:none;z-index:20;transform:translate(-50%,-50%);}
+.burst-heart-svg {position:absolute;transform-origin:center;opacity:0.9;animation:burst 1.3s ease forwards;}
+@keyframes burst {0%{transform:scale(0.3);}60%{transform:scale(2);}100%{transform:scale(0.7);opacity:0;}}
+
+/* ----------------------------
+   HIDDEN TRIGGER ICON
+   ----------------------------
+   Small flower icon fixed in top-left corner, very faint opacity.
+   On hover, it brightens and scales to indicate interactability.
+   Clicking navigates to a secret "surprise.html" page - easter egg.
+*/
+.hidden-trigger {
+  position:fixed;top:15px;left:15px;font-size:1.8rem;cursor:pointer;
+  opacity:0.15;transition:opacity .4s,transform .4s;z-index:10;
+}
+.hidden-trigger:hover {opacity:0.7;transform:scale(1.3);}
+
+/* ----------------------------
+   ROMANTIC POPUP NEXT TO TRIGGER
+   ----------------------------
+   Popup styled as pink-purple gradient with glowing heart arrow pointer.
+   Positioned fixed next to trigger with fade in transition.
+*/
+#hiddenPopup {
+  position: fixed;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  color: white; font-weight: 600; padding: 10px 18px;
+  border-radius: 12px; font-size: 1rem;
+  box-shadow: 0 4px 15px rgba(255, 77, 140, 0.6);
+  opacity: 0; transition: opacity 0.5s ease;
+  z-index: 10000; white-space: nowrap; pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+#hiddenPopup.show {opacity: 1;}
+#hiddenPopup::before {
+  content: "❤"; position: absolute; left: -16px; top: 50%;
+  transform: translateY(-50%); font-size: 16px; color: var(--accent-pink);
+  filter: drop-shadow(0 0 2px rgba(255, 77, 140, 0.9));
+}
+
+/* ----------------------------
+   CUSTOM CURSOR ICON
+   ----------------------------
+   Small pink heart icon tracks mouse position.
+   Pointer events disabled so it doesn't interfere with clicks.
+   Position adjusted via translate to center the icon under cursor.
+*/
+.custom-cursor {
+  position:fixed;top:0;left:0;width:24px;height:24px;
+  pointer-events:none;transform:translate(-50%,-50%);
+  /* Inline SVG of heart as background */
+  background:url('data:image/svg+xml;utf8,<svg fill="pink" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center/contain;
+  z-index:1000;
+}
+</style>
+</head>
+<body>
+<!-- Intro overlay with floating hearts and title -->
+<div id="openingOverlay">
+  <div class="intro-floating-hearts" id="introFloatingHearts"></div>
+  <span class="glow-text">PanjussLovesIdiotss</span>
+</div>
+
+<!-- Vanta animated background -->
+<div id="vanta-bg"></div>
+
+<!-- Main centered wrapper -->
+<div class="wrapper" id="mainWrapper">
+  <h1>💖 Hey Beautiful 💖</h1>
+
+  <!-- Interactive cute messages -->
+  <div class="cute-messages-container">
+    <div class="cute-message" style="top:15%;left:10%;">You're my sunshine ☀️</div>
+    <div class="cute-message" style="top:25%;left:70%;">Love you to the moon 🌙</div>
+    <div class="cute-message" style="top:50%;left:30%;">My heart beats for you ❤️</div>
+    <div class="cute-message" style="top:65%;left:80%;">Forever yours 💞</div>
+    <div class="cute-message" style="top:80%;left:20%;">You make me happy 😊</div>
+  </div>
+
+  <!-- Surprise button container, hidden until messages disappear -->
+  <div id="proposalContainer" style="visibility:hidden;">
+    <button class="btn" id="proposalBtn">Click me for a surprise</button>
+  </div>
+</div>
+
+<!-- Containers for later animations -->
+<div class="floating-hearts" id="floatingHearts"></div>
+<div class="hearts-burst" id="heartsBurst" style="display:none;"></div>
+
+<!-- Hidden clickable icon to go to secret page -->
+<div tabindex="0" role="button" class="hidden-trigger" id="hiddenTrigger">🌷</div>
+
+<!-- Custom cursor element -->
+<div class="custom-cursor" id="customCursor"></div>
+
+<script>
+/* ----------------------------------
+   INITIALIZE VANTA.WAVES BACKGROUND
+   ----------------------------------
+   Applies the animated waves background using Vanta.js
+   - Mouse and touch controls enabled for interactivity
+   - Custom colors set to match page palette
+   - Other parameters fine-tune wave look and motion speed
+*/
+VANTA.WAVES({
+  el:"#vanta-bg",
+  mouseControls:true,
+  touchControls:true,
+  gyroControls:false,
+  color:0xa83279,
+  shininess:40,
+  waveHeight:20,
+  waveSpeed:1,
+  zoom:1.1,
+  backgroundColor:0x181818
+});
+
+/* SVG heart path + settings
+   - HEART_PATH is a vector shape path defining a heart.
+   - HEART_COLORS is an array of red shades used randomly.
+   - CUTE_WORDS are phrases that float up as cute messages.
+*/
+const HEART_PATH = "M12 21.35l-1.45-1.32C5.4 15.36 2 "+
+ "12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 "+
+ "0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 "+
+ "3 16.5 3 19.58 3 22 5.42 22 8.5c0 "+
+ "3.78-3.4 6.86-8.55 11.54L12 21.35z";
+const HEART_COLORS = ["#ff4d4d","#e60000","#ff1a1a","#cc0000","#ff3333"];
+const CUTE_WORDS = ["Love ❤️","Cutie 🐻","Sweetie 🍯","Hug 🤗","Kiss 😘","Forever 💞","Baby 🌸"];
+
+/* ==============================
+   INTRO FLOATING HEARTS FUNCTION
+   -------------------------------
+   Creates a heart SVG at a random horizontal position
+   Appends it to the intro overlay container
+   After 6 seconds, removes the heart for cleanup
+*/
+function createIntroHeart(){
+  const ns="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 24 24");
+  svg.setAttribute("width",24);
+  svg.setAttribute("height",24);
+  svg.classList.add("heart-svg");
+
+  const path=document.createElementNS(ns,"path");
+  path.setAttribute("fill",HEART_COLORS[Math.floor(Math.random()*HEART_COLORS.length)]);
+  path.setAttribute("d",HEART_PATH);
+  svg.appendChild(path);
+
+  svg.style.left=Math.random()*100+"%";
+  document.getElementById("introFloatingHearts").appendChild(svg);
+  setTimeout(()=>svg.remove(),6000);
+}
+/* Interval periodically spawns intro hearts every 400ms */
+let introHeartsInterval=setInterval(createIntroHeart,400);
+
+/* ==============================
+   FLOATING HEARTS AFTER INTRO
+   -------------------------------
+   Creates hearts to float in the main scene similar to intro
+   Adds them to floatingHearts container
+   Cleaned up after 6 seconds
+*/
+function createFloatingHeart(){
+  const ns="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 24 24");
+  svg.setAttribute("width",24);
+  svg.setAttribute("height",24);
+  svg.classList.add("heart-svg");
+
+  const path=document.createElementNS(ns,"path");
+  path.setAttribute("fill",HEART_COLORS[Math.floor(Math.random()*HEART_COLORS.length)]);
+  path.setAttribute("d",HEART_PATH);
+  svg.appendChild(path);
+
+  svg.style.left=Math.random()*100+"%";
+  document.getElementById("floatingHearts").appendChild(svg);
+  setTimeout(()=>svg.remove(),6000);
+}
+
+/* ==============================
+   FLOATING CUTE WORD FUNCTION
+   -------------------------------
+   Creates cute word div, randomly selects a phrase
+   Positions it randomly on horizontal axis
+   Adds to floatingHearts container for uniform floating effects
+   Removes after 6 seconds
+*/
+function createFloatingWord(){
+  const word = document.createElement("div");
+  word.classList.add("floating-word");
+  word.textContent = CUTE_WORDS[Math.floor(Math.random()*CUTE_WORDS.length)];
+  word.style.left = Math.random()*90 + "%";
+  document.getElementById("floatingHearts").appendChild(word);
+  setTimeout(()=>word.remove(),6000);
+}
+
+/* ==============================
+   HEART BURST ANIMATION
+   -------------------------------
+   Produces a burst of multi-sized hearts radiating from center.
+   Hearts positioned in a circular pattern using trigonometry.
+   After animation (~1.3s) hides the burst container.
+*/
+function triggerHeartBurst(){
+  const hb=document.getElementById("heartsBurst");
+  hb.innerHTML="";
+  hb.style.display="block";
+
+  const count=24,ns="http://www.w3.org/2000/svg";
+
+  for(let i=0;i<count;i++){
+    const color=HEART_COLORS[i%HEART_COLORS.length];
+    const size=16+Math.random()*20;
+
+    const heart=document.createElementNS(ns,"svg");
+    heart.setAttribute("viewBox","0 0 24 24");
+    heart.setAttribute("width",size);
+    heart.setAttribute("height",size);
+
+    const path=document.createElementNS(ns,"path");
+    path.setAttribute("fill",color);
+    path.setAttribute("d",HEART_PATH);
+    heart.appendChild(path);
+
+    heart.classList.add("burst-heart-svg");
+
+    // Position the hearts in a circular burst around center point
+    heart.style.left=`${50+35*Math.cos((i/count)*2*Math.PI)}%`;
+    heart.style.top=`${40+35*Math.sin((i/count)*2*Math.PI)}%`;
+
+    hb.appendChild(heart);
+  }
+  setTimeout(()=>hb.style.display="none",1300);
+}
+
+/* ==============================
+   PROPOSAL BUTTON LOGIC
+   -------------------------------
+   On clicking the surprise button:
+   - Replaces button with proposal message and hidden secret hint.
+   - Plays heart burst animation to enhance effect.
+   - Animates hint text to fade in after delay.
+*/
+document.getElementById("proposalBtn").addEventListener("click",()=>{
+  document.getElementById("proposalContainer").innerHTML=`
+  <div class="proposal">
+    <h2>Will you MARRY ME? 🥰</h2>
+    <p class="hint-message" id="hintMsg">(P.S. Find the hidden secret 💌)</p>
+  </div>`;
+  triggerHeartBurst();
+  setTimeout(()=>document.getElementById("hintMsg").classList.add("visible"),2500);
+});
+
+/* ==============================
+   HIDDEN TRIGGER POPUP
+   -------------------------------
+   When the faint flower emoji is clicked:
+   - Shows a romantic gradient popup right next to it with a glowing heart arrow.
+   - Fades the popup in and then redirects to surprise.html after 0.5s.
+*/
+document.getElementById("hiddenTrigger").onclick = () => {
+  const trigger = document.getElementById("hiddenTrigger");
+  const rect = trigger.getBoundingClientRect();
+
+  let popup = document.getElementById("hiddenPopup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "hiddenPopup";
+    popup.textContent = "🎉 Hooray, you found it! 🎉";
+    document.body.appendChild(popup);
+  }
+
+  // Position the popup right next to the trigger, slightly offset horizontally, vertically aligned
+  popup.style.top = rect.top + "px";
+  popup.style.left = (rect.right + 10) + "px";
+
+  // Show with fade-in
+  popup.classList.add("show");
+
+  // Redirect after fade-in completes
+  setTimeout(() => {
+    window.location.href = "surprise.html";
+  }, 2000);
+};
+
+/* ==============================
+   CUSTOM CURSOR FOLLOW MOUSE
+   -------------------------------
+   Tracks mouse movement and moves the custom heart cursor div accordingly.
+   Improves the whimsical interactive feel of the page.
+*/
+document.addEventListener("mousemove", e => {
+  const c = document.getElementById("customCursor");
+  c.style.top = e.clientY + "px";
+  c.style.left = e.clientX + "px";
+});
+
+/* ==============================
+   REVEAL CONTENT AFTER INTRO
+   -------------------------------
+   After approx. 4.8s (when intro overlay fades out):
+   - Stops spawning intro hearts.
+   - Makes main content visible with smooth fade and slide up.
+   - Begins periodic spawning of floating hearts and cute words in main scene.
+*/
+setTimeout(() => {
+  clearInterval(introHeartsInterval);
+  document.getElementById('mainWrapper').classList.add('visible');
+  setInterval(createFloatingHeart, 500);
+  setInterval(createFloatingWord, 2000);
+}, 4800);
+
+/* ==============================
+   HOVER ON CUTE MESSAGES
+   -> MAKE THEM FALL + REVEAL BUTTON
+   -------------------------------
+   Adds mouseenter listeners to all cute messages.
+   On hover:
+   - Applies drop animation (falling + fading).
+   - Removes the element after animation.
+   - Tracks how many remain.
+   - When all are gone, makes the surprise button visible.
+   Prevents retriggering on messages already dropped.
+*/
+const messages = document.querySelectorAll('.cute-message');
+let messagesLeft = messages.length;
+const proposalContainer = document.getElementById('proposalContainer');
+
+messages.forEach(msg => {
+  msg.addEventListener('mouseenter', () => {
+    if (msg.classList.contains('drop')) return; // prevent repeated triggers
+    msg.classList.add('drop');
+    messagesLeft--;
+
+    setTimeout(() => {
+      msg.remove();
+      if (messagesLeft === 0) {
+        proposalContainer.style.visibility = 'visible';
+      }
+    }, 800); // Wait for drop animation before removal
+  });
+});
+
+/* ==============================
+   CLICK ANYWHERE TO SPAWN HEART
+   -------------------------------
+   Creates a heart SVG element exactly where the user clicks.
+   The heart floats upward, scales up and fades out over 1.5 seconds.
+   Removed from DOM afterward to prevent buildup.
+*/
+function createClickHeart(x, y) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", 24);
+  svg.setAttribute("height", 24);
+  svg.style.position = "fixed";
+  svg.style.left = x + "px";
+  svg.style.top = y + "px";
+  svg.style.pointerEvents = "none";
+  svg.style.zIndex = 1000;
+  svg.style.opacity = 1;
+  svg.style.transition = "transform 1.5s ease-out, opacity 1.5s ease-out";
+
+  const path = document.createElementNS(ns, "path");
+  path.setAttribute("fill", HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)]);
+  path.setAttribute("d", HEART_PATH);
+  svg.appendChild(path);
+  document.body.appendChild(svg);
+
+  requestAnimationFrame(() => {
+    svg.style.transform = "translateY(-120px) scale(1.5)";
+    svg.style.opacity = 0;
+  });
+
+  setTimeout(() => svg.remove(), 1500);
+}
+document.addEventListener("click", (e) => {
+  createClickHeart(e.clientX, e.clientY);
+});
+</script>
+</body>
+</html>

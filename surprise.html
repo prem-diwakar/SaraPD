@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Guess what? 🎉</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- 
+====================== EXTERNAL LIBRARIES ======================
+- three.js             : Required for Vanta.js visuals
+- vanta.fog.min.js     : Foggy animated background
+- tsparticles.engine   : Core engine for tsParticles (fireworks)
+- tsparticles-preset-fireworks: Preset configuration for fireworks
+================================================================
+-->  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+
+<!-- tsParticles Fireworks -->
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-engine@3/tsparticles.engine.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-preset-fireworks@2/tsparticles.preset.fireworks.bundle.min.js"></script>
+
+<style>
+/* 
+====================== COLOR THEME VARIABLES ======================
+Changing values here updates the entire project's look.
+================================================================
+*/
+:root {
+  --bg-color: #2c1a36; /* Dark purple background for moodiness */
+  --text-color: #f2e6f7; /* Soft light text color */
+  --accent-color: #d36ca6; /* Deep rose accent color */
+  --label-color: #a05274; /* Muted mauve for labels */
+}
+body {
+  margin: 0;
+  font-family: "Poppins", Arial, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  overflow: hidden; /* Keeps the fullscreen design clean (no scroll) */
+  height: 100vh;
+  position: relative;
+}
+
+/* ===================== START: QUESTION OVERLAY ===================== */
+/* This blocks the main section until the user answers correctly */   
+#questionOverlay {
+  position: fixed;
+  inset: 0;
+  background: black;
+  color: white;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.8s ease;
+}
+#questionOverlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+/* Inner question box styling */
+#questionBox {
+  border: 2px solid var(--accent-color); /* Use accent color for elegant outline */
+  border-radius: 12px; /* Rounded corners */
+  padding: 25px; /* Slightly more padding for comfort */
+  box-shadow: 0 0 15px rgba(211, 108, 166, 0.7); /* Subtle glow for romantic vibe */
+  background: rgba(44, 26, 54, 0.75); /* Semi-transparent dark background */
+  max-width: 400px;
+  text-align: center;
+}
+#questionBox h2 {
+  margin-bottom: 20px;
+}
+#questionInput {
+  padding: 10px;
+  width: 80%;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+#questionSubmit {
+  padding: 10px 20px;
+  font-size: 1rem;
+  margin-top: 15px;
+  background: #ff4081;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#errorMsg {
+  margin-top: 10px;
+  color: red;
+  font-size: 0.9rem;
+}
+/* ===================== END: QUESTION OVERLAY ===================== */
+
+/* ===================== START: FIREWORKS CONTAINER ===================== */
+#tsparticles {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5000;
+  pointer-events: none;
+  background: black; /* solid background during fireworks */
+  transition: opacity 1s ease;
+}
+#tsparticles.hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+/* ===================== END: FIREWORKS CONTAINER ===================== */
+
+/* ===================== VANTA BACKGROUND CONTAINER ===================== */
+#vanta-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ===================== MAIN CONTENT WRAPPER (HIDDEN INITIALLY) ===================== */ 
+.wrapper {
+  display: none;  /* Hide until fireworks finish */
+  position: relative;
+  z-index: 10;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease;
+}
+.wrapper.visible {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 
+================== ZOOM IN/OUT EFFECT FOR COUNTDOWN HEADING ==================
+This makes the "Countdown to Your Birthday" heading pulse/zoom in and out.
+*/
+@keyframes zoomPulse {
+  0% { transform: scale(1);}
+  50% { transform: scale(1.08);}
+  100% { transform: scale(1);}
+}
+.wrapper h1 {
+  /* Apply zoomPulse animation and keep the glow for the heading */
+  animation: zoomPulse 2.5s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(211, 108, 166, 0.6),
+               0 0 20px rgba(211, 108, 166, 0.4),
+               0 0 30px rgba(211, 108, 166, 0.2);
+}
+
+/* Also keep your original heading style just in case other h1s exist */
+h1 {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(211, 108, 166, 0.4);
+}
+/* Countdown timer layout */
+.countdown-timer {
+  display: flex; 
+  gap: 20px; 
+  flex-wrap: wrap; 
+  justify-content: center; 
+  margin-bottom: 20px;
+}
+.time-block {
+  background: white; 
+  padding: 15px; 
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(211, 108, 166, 0.25);
+  min-width: 90px; 
+  text-align: center;
+}
+.time-number {
+  font-size: 2.5rem; 
+  font-weight: 900; 
+  color: var(--accent-color);
+}
+.time-label {
+  font-size: 0.8rem; 
+  font-weight: 600; 
+  color: var(--label-color);
+}
+
+/* ===================== SLIDESHOW STYLE ===================== */
+#timerSlideshow {
+  width: 95vw;         
+  max-width: 600px;    
+  height: 480px;
+  overflow: hidden;
+  border-radius: 20px;
+  position: relative;
+}
+.slide-track {
+  display: flex;
+  animation: scrollSlides 50s linear infinite;
+}
+.slide {
+  width: 540px;       
+  height: 460px;     
+  object-fit: cover;
+  border-radius: 18px;
+  margin-right: 24px;
+  filter: grayscale(20%);
+  transition: transform 0.3s ease, filter 0.3s ease;
+  cursor: pointer;
+}
+.slide:hover {
+  transform: scale(1.05);
+  filter: grayscale(0%);
+}
+@keyframes scrollSlides {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50%)); }
+}
+
+/* ===================== FLOATING HEARTS ===================== */
+#floatingHeartsContainer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 150;
+}
+/* Small floating heart style */
+.floating-heart {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: url('data:image/svg+xml;utf8,<svg fill="%23ff0000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 1.01 4.5 2.09C13.09 4.01 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center center / contain;
+  opacity: 0.8;
+  animation: floatUp linear forwards;
+}
+/* Animation for hearts floating upward */
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-120vh) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* ===================== HEART BURST (CLICK EFFECT) ===================== */
+.burst-heart {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  background: url('data:image/svg+xml;utf8,<svg fill="%23d36ca6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 1.01 4.5 2.09C13.09 4.01 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center center / contain;
+  pointer-events: none;
+  animation: burstBig 0.3s ease forwards;
+  z-index: 101;
+}
+@keyframes burstBig {
+  0% { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+/* Small hearts bursting out */
+.burst-small-heart {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: url('data:image/svg+xml;utf8,<svg fill="%23d36ca6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 1.01 4.5 2.09C13.09 4.01 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') no-repeat center center / contain;
+  pointer-events: none;
+  opacity: 1;
+  animation: burstSmall 0.7s ease forwards;
+  z-index: 102;
+}
+@keyframes burstSmall {
+  to {
+    transform: translate(var(--burst-x), var(--burst-y)) scale(0);
+    opacity: 0;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Audio for fireworks -->
+<audio id="fireworks-audio" src="fireworks-sound.wav" preload="auto"></audio>
+
+<!-- Question Screen -->
+<div id="questionOverlay">
+  <div id="questionBox">
+    <h2>💖 Quick Question for You 💖</h2>
+    <p>What is your Snap username in my contacts?</p>
+    <input type="text" id="questionInput" placeholder="Type your answer...">
+    <br>
+    <button id="questionSubmit">Submit</button>
+    <div id="errorMsg"></div>
+  </div>
+</div>
+
+<!-- FIREWORKS BACKDROP -->
+<div id="tsparticles" class="hidden"></div>
+
+<!-- ANIMATED BACKGROUND -->
+<div id="vanta-bg"></div>
+
+<!-- FLOATING HEARTS CONTAINER -->
+<div id="floatingHeartsContainer"></div>
+
+<!-- Main content -->
+<div class="wrapper" id="mainWrapper">
+  <h1>🎉 Countdown to Your Birthday 🎉</h1>
+  <div class="countdown-timer">
+    <div class="time-block"><div class="time-number" id="days-number">000</div><div class="time-label">DAYS</div></div>
+    <div class="time-block"><div class="time-number" id="hours-number">00</div><div class="time-label">HOURS</div></div>
+    <div class="time-block"><div class="time-number" id="minutes-number">00</div><div class="time-label">MINUTES</div></div>
+    <div class="time-block"><div class="time-number" id="seconds-number">00</div><div class="time-label">SECONDS</div></div>
+  </div>
+  <div id="timerSlideshow"></div>
+</div>
+
+<script>
+/* 
+================== 1. VANTA FOG SETUP ==================
+Creates the animated foggy background.
+*/
+let vantaEffect;
+function initVantaFog() {
+  if (vantaEffect) vantaEffect.destroy();
+  vantaEffect = VANTA.FOG({
+    el: "#vanta-bg",
+    mouseControls: true,
+    touchControls: true,
+    highlightColor: 0xd893d1,
+    midtoneColor: 0xba70a6,
+    lowlightColor: 0x5c2754,
+    baseColor: 0x2c1a36,
+    blurFactor: 0.5,
+    speed: 1.0,
+    zoom: 1
+  });
+}
+initVantaFog();
+
+/* 
+================== 2. FIREWORKS SEQUENCE ==================
+Plays sound, shows fireworks, then reveals main content.
+*/
+async function startFireworksSequence() {
+  const audio = document.getElementById("fireworks-audio");
+  audio.volume = 0.6;
+  try { await audio.play(); } catch(e) { console.log("Autoplay blocked:", e); }
+  const tsParticlesContainer = document.getElementById("tsparticles");
+  tsParticlesContainer.classList.remove("hidden"); // show fireworks container
+
+  await tsParticles.load("tsparticles", {
+    preset: "fireworks",
+    fullScreen: { enable: true },
+    background: { color: "black" }, // solid black during fireworks
+    fpsLimit: 60
+  });
+
+  setTimeout(() => {
+    tsParticlesContainer.classList.add("hidden");
+    setTimeout(() => {
+      const mainWrapper = document.getElementById("mainWrapper");
+      mainWrapper.style.display = "flex";
+      void mainWrapper.offsetWidth; // force reflow to enable transition
+      mainWrapper.classList.add("visible");
+      audio.pause();
+      audio.currentTime = 0;
+    }, 300);
+  }, 5000);
+}
+
+/* 
+================== 3. QUESTION ANSWER VALIDATION ==================
+*/
+document.getElementById("questionSubmit").addEventListener("click", () => {
+  const answer = document.getElementById("questionInput").value.trim().toLowerCase();
+  const correctAnswer = "chubbss"; // set your answer here
+  if (answer === correctAnswer) {
+    document.getElementById("questionOverlay").classList.add("hidden");
+    startFireworksSequence();
+  } else {
+    document.getElementById("errorMsg").textContent = "Oops! Try again ❤️";
+  }
+});
+
+/* 
+================== 4. COUNTDOWN CLOCK ==================
+*/
+function updateCountdown() {
+  const now = new Date();
+  let birthday = new Date(now.getFullYear(), 8, 24);
+  if (now > birthday) birthday.setFullYear(birthday.getFullYear() + 1);
+  const diff = birthday - now;
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / (3600*24));
+  const hours = Math.floor((totalSeconds % (3600*24)) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  document.getElementById("days-number").textContent = String(days).padStart(3,"0");
+  document.getElementById("hours-number").textContent = String(hours).padStart(2,"0");
+  document.getElementById("minutes-number").textContent = String(minutes).padStart(2,"0");
+  document.getElementById("seconds-number").textContent = String(seconds).padStart(2,"0");
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+/* 
+================== 5. SLIDESHOW SETUP ==================
+*/
+const photos = [
+  "photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg"
+];
+function setupSlideshow() {
+  const container = document.getElementById("timerSlideshow");
+  const track = document.createElement("div");
+  track.className = "slide-track";
+  const allPhotos = photos.concat(photos);
+  allPhotos.forEach(src => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.className = "slide";
+    img.alt = "Special photo";
+    track.appendChild(img);
+  });
+  track.style.width = `${(540 + 24) * allPhotos.length}px`;
+  container.appendChild(track);
+}
+setupSlideshow();
+
+/* 
+================== 6. FLOATING HEARTS ==================
+Creates hearts every 300ms rising upwards.
+*/
+const heartsContainer = document.getElementById('floatingHeartsContainer');
+function spawnFloatingHeart() {
+  const heart = document.createElement('div');
+  heart.className = 'floating-heart';
+  heart.style.left = `${Math.random() * window.innerWidth}px`;
+  heart.style.bottom = '-20px';
+  heart.style.animationDuration = `${4 + Math.random() * 6}s`;
+  heartsContainer.appendChild(heart);
+  heart.addEventListener('animationend', () => heart.remove());
+}
+setInterval(spawnFloatingHeart, 300);
+
+/* 
+================== 7. HEART BURST ON IMAGE CLICK ==================
+Spawns one large and multiple small hearts from the click position.
+*/
+function heartBurstEffect(event) {
+  const img = event.currentTarget;
+  const rect = img.getBoundingClientRect();
+  // Using pageX/Y to account for scroll offset  
+  const clickX = event.clientX - rect.left;
+  const clickY = event.clientY - rect.top;
+
+  // BIG HEART  
+  const bigHeart = document.createElement('div');
+  bigHeart.className = 'burst-heart';
+  bigHeart.style.left = `${rect.left + clickX - 40}px`;
+  bigHeart.style.top = `${rect.top + clickY - 40}px`;
+  document.body.appendChild(bigHeart);
+  bigHeart.addEventListener('animationend', () => bigHeart.remove());
+
+  // SEVERAL SMALL HEARTS
+  const particlesCount = 12;
+  for (let i = 0; i < particlesCount; i++) {
+    const smallHeart = document.createElement('div');
+    smallHeart.className = 'burst-small-heart';
+    smallHeart.style.left = `${rect.left + clickX - 12}px`;
+    smallHeart.style.top = `${rect.top + clickY - 12}px`;
+
+    const angle = Math.random() * 2 * Math.PI;
+    const distance = 60 + Math.random() * 40;
+    smallHeart.style.setProperty('--burst-x', `${Math.cos(angle) * distance}px`);
+    smallHeart.style.setProperty('--burst-y', `${Math.sin(angle) * distance}px`);
+
+    document.body.appendChild(smallHeart);
+    smallHeart.addEventListener('animationend', () => smallHeart.remove());
+  }
+}
+
+/* 
+================== 8. DISABLE RIGHT-CLICK ON IMAGES ==================
+*/
+function attachHeartBurstListeners() {
+  const slideshowImages = document.querySelectorAll('#timerSlideshow img.slide');
+  slideshowImages.forEach(img => {
+    img.addEventListener('click', heartBurstEffect);
+  });
+}
+window.addEventListener('load', () => {
+  attachHeartBurstListeners();
+
+  // Disable right-click on all images
+  document.querySelectorAll('img').forEach(img => {
+    img.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      alert("Right-click disabled on images to protect privacy.");
+    });
+  });
+});
+</script>
+</body>
+</html>
